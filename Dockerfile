@@ -1,5 +1,5 @@
 FROM python:3.11.13
-LABEL org.opencontainers.image.source="https://github.com/Yuuzi261/Tweetcord"
+LABEL org.opencontainers.image.source="https://github.com/pokedo0/Tweetcord"
 LABEL org.opencontainers.image.description="A Discord bot for Twitter notifications, using tweety-ns module."
 LABEL org.opencontainers.image.licenses="MIT"
 WORKDIR /bot

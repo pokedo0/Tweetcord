@@ -1,7 +1,7 @@
 services:
   Tweetcord:
     build: .
-    image: ghcr.io/yuuzi261/tweetcord:latest
+    image: ghcr.io/pokedo0/tweetcord:latest
     pull_policy: always
     container_name: tweetcord
     restart: unless-stopped
