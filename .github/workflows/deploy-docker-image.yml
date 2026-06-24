@@ -1,13 +1,12 @@
 name: "Deploy docker image"
 
 on:
+  push:
+    branches:
+      - main
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Which tag to build'
-        required: true
 
 env:
   REGISTRY: ghcr.io
@@ -35,8 +34,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=${{ env.IMAGE_DESCRIPTION }}
