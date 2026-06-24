@@ -6,7 +6,9 @@ from tweety.types import Tweet
 
 from src.i18n import t
 from src.utils import get_visible_length, safe_truncate
+from src.log import setup_logger
 
+log = setup_logger(__name__)
 
 class Cog_Extension(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -62,13 +64,13 @@ class ParsedTweet():
             self.trans_lang = trans_data.get('source_lang', None)
             
             # --- DEBUG LOGGING ---
-            print(f"[DEBUG Translation] Source Lang: '{self.trans_lang}', Target Lang: '{trans_data.get('target_lang')}'")
+            log.info(f"Source Lang: '{self.trans_lang}', Target Lang: '{trans_data.get('target_lang')}'")
             # ---------------------
             
             if self._should_skip_translation(
                 self.trans_lang, trans_data.get('target_lang'), self.text, self.trans_text
             ):
-                print(f"[DEBUG Translation] Skipped by filter logic!")
+                log.info(f"Skipped by filter logic!")
                 self.trans_text = None
 
             self.quote.text = quote_data.get('raw_text', {}).get('text', None)
