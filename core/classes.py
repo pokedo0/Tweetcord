@@ -60,12 +60,23 @@ class ParsedTweet():
             self.text = tweet_data.get('raw_text', {}).get('text', None)
             self.trans_text = trans_data.get('text', None)
             self.trans_lang = trans_data.get('source_lang', None)
+            if self._should_skip_translation(
+                self.trans_lang, trans_data.get('target_lang'), self.text, self.trans_text
+            ):
+                self.trans_text = None
+
             self.quote.text = quote_data.get('raw_text', {}).get('text', None)
             self.quote.name = quote_data.get('author', {}).get('name', None)
             self.quote.screen_name = quote_data.get('author', {}).get('screen_name', None)
             self.quote.url = quote_data.get('url', None)
             self.quote.profile_link = quote_data.get('author', {}).get('url', None)
-            self.quote.trans_text = quote_data.get('translation', {}).get('text', None)
+            quote_trans_data = quote_data.get('translation', {})
+            self.quote.trans_text = quote_trans_data.get('text', None)
+            if self._should_skip_translation(
+                quote_trans_data.get('source_lang'), quote_trans_data.get('target_lang'),
+                self.quote.text, self.quote.trans_text
+            ):
+                self.quote.trans_text = None
             
             if tweet_data.get('reposted_by', {}):
                 self.text = f"RT @{tweet_data.get('author', {}).get('screen_name', None)}: {self.text}"
@@ -133,6 +144,32 @@ class ParsedTweet():
         else:
             raise TypeError('source must be a Tweet, BeautifulSoup, or dict')
         
+    @staticmethod
+    def _should_skip_translation(source_lang: str, target_lang: str, original_text: str, translated_text: str) -> bool:
+        """Three-tier translation redundancy filter.
+        
+        Tier 1: source is 'zh' and target starts with 'zh' (e.g. zh-cn, zh-tw) -> skip.
+        Tier 2: source_lang exactly matches target_lang -> skip.
+        Tier 3: translated text identical to original text -> skip (fallback).
+        """
+        if not translated_text:
+            return False
+        
+        source = (source_lang or '').lower()
+        target = (target_lang or '').lower()
+        
+        # Tier 1: zh -> zh-cn/zh-tw, same language family
+        if source == 'zh' and target.startswith('zh'):
+            return True
+        # Tier 2: exact language match
+        if source and source == target:
+            return True
+        # Tier 3: text content identical
+        if original_text and translated_text.strip() == original_text.strip():
+            return True
+        
+        return False
+
     @staticmethod
     def _wrap_quote(text: str) -> str:
         return "\n".join([f"> {line}" for line in text.splitlines()]) if text else ""

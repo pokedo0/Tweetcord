@@ -122,5 +122,84 @@ class TestParsedTweet(unittest.TestCase):
         self.assertIn("> Quote Content", content)
         self.assertNotIn("('Main Content', False)", content)
 
+    def test_translation_filter_tier1_zh_family(self):
+        """Tier 1: source_lang='zh' + target_lang starts with 'zh' -> skip translation."""
+        source = {
+            'tweet': {
+                'raw_text': {'text': '永远支持talk君老师'},
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': '永远支持talk君老师', 'source_lang': 'zh', 'target_lang': 'zh-cn'}
+            }
+        }
+        pt = ParsedTweet(source)
+        self.assertIsNone(pt.trans_text)
+
+        # zh -> zh-tw should also be skipped
+        source['tweet']['translation']['target_lang'] = 'zh-tw'
+        pt2 = ParsedTweet(source)
+        self.assertIsNone(pt2.trans_text)
+
+    def test_translation_filter_tier2_exact_lang_match(self):
+        """Tier 2: source_lang exactly matches target_lang -> skip translation."""
+        source = {
+            'tweet': {
+                'raw_text': {'text': 'Hello world'},
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': 'Hello world', 'source_lang': 'en', 'target_lang': 'en'}
+            }
+        }
+        pt = ParsedTweet(source)
+        self.assertIsNone(pt.trans_text)
+
+    def test_translation_filter_tier3_text_identical(self):
+        """Tier 3: translated text identical to original -> skip (fallback)."""
+        source = {
+            'tweet': {
+                'raw_text': {'text': 'some text here'},
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': 'some text here', 'source_lang': 'unknown', 'target_lang': 'ja'}
+            }
+        }
+        pt = ParsedTweet(source)
+        self.assertIsNone(pt.trans_text)
+
+    def test_translation_filter_keeps_valid_translation(self):
+        """Valid translation (different lang, different text) should be kept."""
+        source = {
+            'tweet': {
+                'raw_text': {'text': 'Hello world'},
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': '你好世界', 'source_lang': 'en', 'target_lang': 'zh-cn'}
+            }
+        }
+        pt = ParsedTweet(source)
+        self.assertEqual(pt.trans_text, '你好世界')
+
+    def test_translation_filter_quote(self):
+        """Quote translation should also be filtered by three-tier logic."""
+        source = {
+            'tweet': {
+                'raw_text': {'text': 'Main text'},
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': '主文本', 'source_lang': 'en', 'target_lang': 'zh-cn'},
+                'quote': {
+                    'raw_text': {'text': '中文引用内容'},
+                    'author': {'name': 'Quoter', 'screen_name': 'quoter', 'url': 'https://x.com/quoter'},
+                    'url': 'https://x.com/quoter/status/1',
+                    'translation': {'text': '中文引用内容', 'source_lang': 'zh', 'target_lang': 'zh-cn'}
+                }
+            }
+        }
+        pt = ParsedTweet(source)
+        # Main tweet translation should be kept (en -> zh-cn, different text)
+        self.assertEqual(pt.trans_text, '主文本')
+        # Quote translation should be skipped (zh -> zh-cn, tier 1)
+        self.assertIsNone(pt.quote.trans_text)
+
 if __name__ == '__main__':
     unittest.main()
