@@ -60,9 +60,15 @@ class ParsedTweet():
             self.text = tweet_data.get('raw_text', {}).get('text', None)
             self.trans_text = trans_data.get('text', None)
             self.trans_lang = trans_data.get('source_lang', None)
+            
+            # --- DEBUG LOGGING ---
+            print(f"[DEBUG Translation] Source Lang: '{self.trans_lang}', Target Lang: '{trans_data.get('target_lang')}'")
+            # ---------------------
+            
             if self._should_skip_translation(
                 self.trans_lang, trans_data.get('target_lang'), self.text, self.trans_text
             ):
+                print(f"[DEBUG Translation] Skipped by filter logic!")
                 self.trans_text = None
 
             self.quote.text = quote_data.get('raw_text', {}).get('text', None)
