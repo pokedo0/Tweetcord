@@ -100,12 +100,12 @@ class TestParsedTweet(unittest.TestCase):
         rt_parsed_tweet = ParsedTweet(rt_source_dict)
         
         # Check if RT prefix is added to both text and trans_text
-        self.assertEqual(rt_parsed_tweet.text, "RT @original_author: Original Text")
-        self.assertEqual(rt_parsed_tweet.trans_text, "RT @original_author: Translated Text")
+        self.assertEqual(rt_parsed_tweet.text, "RT [@original_author](https://twitter.com/original_author): Original Text")
+        self.assertEqual(rt_parsed_tweet.trans_text, "RT [@original_author](https://twitter.com/original_author): Translated Text")
         
         # Verify get_text output contains the RT prefix
         result, _ = rt_parsed_tweet.get_text()
-        self.assertIn("RT @original_author:", result)
+        self.assertIn("RT [@original_author](https://twitter.com/original_author):", result)
         self.assertIn("Translated Text", result)
 
     def test_get_quote_text_repro(self):
@@ -200,6 +200,66 @@ class TestParsedTweet(unittest.TestCase):
         self.assertEqual(pt.trans_text, '主文本')
         # Quote translation should be skipped (zh -> zh-cn, tier 1)
         self.assertIsNone(pt.quote.trans_text)
+
+    def test_markdown_escaping(self):
+        """Test that ParsedTweet escapes markdown in source text."""
+        source = {
+            'tweet': {
+                'raw_text': {'text': '(*’▽’) #SDVX'},
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': None, 'source_lang': 'ja'}
+            }
+        }
+        parsed = ParsedTweet(source)
+        # Check text (should be escaped)
+        self.assertEqual(parsed.text, r"\(\*’▽’\) #SDVX")
+        
+        # Check that get_text returns escaped text
+        text, _ = parsed.get_text()
+        self.assertEqual(text, r"\(\*’▽’\) #SDVX")
+
+    def test_duplicate_facets_in_raw_text(self):
+        """Test that duplicate facets are correctly formatted when indices are provided."""
+        source = {
+            'tweet': {
+                'raw_text': {
+                    'text': 'Abstract #TAG1 and #TAG2 and #TAG1.',
+                    'facets': [
+                        {"type": "hashtag", "indices": [9, 14], "original": "TAG1"},
+                        {"type": "hashtag", "indices": [19, 24], "original": "TAG2"},
+                        {"type": "hashtag", "indices": [29, 34], "original": "TAG1"}
+                    ]
+                },
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': None, 'source_lang': 'en'}
+            }
+        }
+        parsed = ParsedTweet(source)
+        
+        expected_text = (
+            r"Abstract [#TAG1](https://twitter.com/hashtag/TAG1) and [#TAG2](https://twitter.com/hashtag/TAG2) and [#TAG1](https://twitter.com/hashtag/TAG1)."
+        )
+        self.assertEqual(parsed.text, expected_text)
+
+    def test_html_entities_in_raw_text(self):
+        """Test that HTML entities like &amp; in raw_text are unescaped in ParsedTweet."""
+        source = {
+            'tweet': {
+                'raw_text': {
+                    'text': 'A &amp; B &lt;tag&gt; https://t.co/xyz',
+                    'facets': [
+                        {"type": "media", "indices": [22, 38], "original": "https://t.co/xyz"}
+                    ]
+                },
+                'author': {'screen_name': 'test_user'},
+                'media': {'all': []},
+                'translation': {'text': None, 'source_lang': 'en'}
+            }
+        }
+        parsed = ParsedTweet(source)
+        self.assertEqual(parsed.text, 'A & B <tag> ')
 
 if __name__ == '__main__':
     unittest.main()

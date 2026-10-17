@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.7.4 (September 27, 2026)
+
+**🐛Fixes:**
+- Updated the `tweety-ns` dependency with a fallback to `/i/jf/` for extracting the ondemand chunk manifest, fixing `Exception: Couldn't get animation key indices` and account authentication failures caused by X's migration to the new Rolldown-based frontend (`x-web`).
+
+## 0.7.3 (September 23, 2026)
+
+**✨Features:**
+- Implemented a notification retry mechanism with exponential backoff to automatically retry sending messages upon encountering transient Discord server or network errors (such as `503 Service Unavailable` or timeouts), resolving part of issue [#98](https://github.com/Yuuzi261/Tweetcord/issues/98).
+- Added support for prioritizing existing saved sessions on startup, eliminating the need to force a re-login on every bot restart.
+
+**♻️Refactor:**
+- Corrected a typo in the type hint for the `fetch_tracked_channels` function parameter.
+
+**🐛Fixes:**
+- Resolved autocomplete exceptions caused by excessive choices (> 25) or choice labels exceeding Discord's 100-character limit, resolving part of issue [#98](https://github.com/Yuuzi261/Tweetcord/issues/98).
+- Updated the `tweety-ns` dependency with a cache-busting patch to address login failures caused by Cloudflare edge caching on X (`business.x.com`).
+- Fixed an issue where deleted channels (`# unknown`) could not be filtered by query in channel autocomplete.
+- Fixed an issue where HTML entities (such as `&amp;`, `&lt;`, `&gt;`) in tweet content were not unescaped, preventing raw entities from displaying in Discord messages or breaking Markdown formatting (applies when using the `built_in` embed type).
+- Safely retrieve the selected channel option via `itn.namespace` in username autocomplete to avoid potential exceptions when accessing raw interaction data.
+
+**🚀Performance:**
+- Optimized `fetch_tracked_channels` by terminating search early once the maximum autocomplete choice limit (25) is reached, avoiding unnecessary database iterations.
+
+## 0.7.2 (July 15, 2026)
+
+**✨Features:**
+- Significantly enhanced Markdown escaping functionality, optimizing text replacement for URLs, media, mentions (@), and hashtags (#) to prevent broken Markdown formatting in Discord messages (applies when using the `built_in` embed type with fx enhancements enabled).
+- Added support for reading from the configuration to dynamically determine whether to enable prefix commands in guilds. If prefix commands are disabled in guilds, the Message Content Intent can be safely turned off without affecting any functionality.
+
+**♻️Refactor:**
+- Refactored the `init_db` function logic, decoupling the database existence check into the `init_db` function.
+
+**🐛Fixes:**
+- Fixed the `/sync` command to prevent re-following and re-enabling notifications for removed users, and prevented unconfigured clients from interrupting the sync process.
+- Implemented a temporary patch for issue [#93](https://github.com/Yuuzi261/Tweetcord/issues/93).
+- Fixed and refined edge cases in the Markdown cleaning and escaping logic.
+
+**🎉New Contributors:**
+- @tomokarin made their first contribution in [#90](https://github.com/Yuuzi261/Tweetcord/pull/90)
+- @Ishannaik made their first contribution in [#95](https://github.com/Yuuzi261/Tweetcord/pull/95)
+
+## 0.7.1 (May 20, 2026)
+
+**🐛Fixes:**
+- Fix task crash on retweets caused by forcing RT info into `self.trans`, changing it from `None` to a `string` and breaking downstream logic.
+
 ## 0.7 (May 19, 2026)
 
 **✨Features:**
