@@ -3,6 +3,7 @@ import os
 import sys
 import re
 import aiohttp
+import httpx
 from datetime import datetime, timezone, timedelta
 
 import aiosqlite
@@ -27,6 +28,26 @@ DOMAIN_NAME: str = configs['embed']['proxy']['domain_name']
 
 log = setup_logger(__name__)
 lock = get_lock()
+
+async def fetch_ct0_from_x(auth_token: str) -> str | None:
+    """Fallback: fetch ct0 cookie from x.com when business.x.com challenge blocks load_auth_token."""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    }
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=15.0) as client:
+            resp = await client.get("https://x.com", cookies={"auth_token": auth_token})
+            ct0 = resp.cookies.get("ct0") or client.cookies.get("ct0")
+            return ct0
+    except Exception as e:
+        log.warning(f"failed to fetch ct0 from x.com fallback: {e}")
+        return None
+
 
 class AccountTracker():
     def __init__(self, bot: commands.Bot):
@@ -75,6 +96,22 @@ class AccountTracker():
                     await app.load_auth_token(account_token)
                     return app
                 except Exception as e:
+                    log.warning(
+                        f"standard authentication endpoint failed for account: {account_name} ({e}), "
+                        f"attempting direct fallback via x.com..."
+                    )
+                    try:
+                        ct0 = await fetch_ct0_from_x(account_token)
+                        if ct0:
+                            log.info(f"successfully obtained ct0 from x.com for account: {account_name}, loading session...")
+                            await app.load_cookies({"auth_token": account_token, "ct0": ct0})
+                            log.info(f"fallback authentication succeeded for account: {account_name}")
+                            return app
+                        else:
+                            log.error(f"failed to obtain ct0 from x.com for account: {account_name}")
+                    except Exception as fallback_err:
+                        log.error(f"fallback authentication error for account {account_name}: {fallback_err}")
+
                     log.error(f"authentication failed for account: {account_name} [Attempt {attempt + 1}/{max_attempts}]")
                     if attempt < max_attempts - 1:
                         await asyncio.sleep(5)
